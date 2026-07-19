@@ -1,0 +1,825 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Paquetes ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,provide=*]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes}
+
+\geometry{margin=2.5cm}
+\onehalfspacing
+
+% --- Teoremas y entornos ---
+\newtheorem{theorem}{Teorema}
+\newtheorem{lemma}[theorem]{Lema}
+\newtheorem{corollary}[theorem]{Corolario}
+\newtheorem{proposition}[theorem]{Proposición}
+\theoremstyle{definition}
+\newtheorem{definition}{Definición}
+\newtheorem{example}{Ejemplo}
+\theoremstyle{remark}
+\newtheorem{remark}{Observación}
+
+% --- Cabecera ---
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{NP-Completitud}
+\lhead{Problema de la 3-Partición}
+\rfoot{\thepage}
+
+% --- Comandos útiles ---
+\newcommand{\TPART}{\textsc{3-Partition}}
+\newcommand{\FPART}{\textsc{4-Partition}}
+\newcommand{\DM}{\textsc{3DM}}
+\newcommand{\PART}{\textsc{Partition}}
+\newcommand{\SUMA}{\textsc{Subset-Sum}}
+
+% Caja para "intuición" (explicación para el lector)
+\newtcolorbox{intuicion}[1][]{
+  colback=yellow!8, colframe=yellow!55!black, coltitle=black,
+  fonttitle=\bfseries, title={Intuición}, #1}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\LARGE\bfseries Demostración de NP-Completitud del\\[0.5em]
+  Problema de la 3-Partición\par}
+  \vspace{1.5cm}
+  {\large Trabajo de Complejidad Computacional\par}
+  \vspace{0.5cm}
+  {\large Ismael Sallami Moreno\par}
+  \vspace{0.5cm}
+  {\large Universidad de Granada\par}
+  \vspace{2cm}
+  {\normalsize 2026\par}
+  \vfill
+  \begin{tcolorbox}[colback=gray!10, colframe=gray!50, width=0.85\textwidth]
+  \small\centering
+  \textbf{Referencia principal:} M.\,R. Garey y D.\,S. Johnson,
+  \textit{Computers and Intractability: A Guide to the Theory of NP-Completeness},
+  W.H. Freeman, 1979 (Teoremas 4.3 y 4.4, pp.~96--101; problema [SP15]).
+  \end{tcolorbox}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introducción y Motivación}
+% ============================================================
+
+El \textbf{Problema de la 3-Partición} (\TPART) es uno de los problemas
+NP-completos más útiles de la teoría de la complejidad computacional.
+A diferencia de otros problemas de partición de enteros, como el Problema de la
+Mochila o el Problema de la Partición clásica (en dos partes), la 3-Partición
+posee una propiedad más fuerte: es \textbf{fuertemente NP-completo}
+(\emph{strongly NP-complete}).
+
+\begin{intuicion}
+Casi todos los problemas NP-completos sobre números (Mochila, Partición en dos)
+se vuelven fáciles si los números de la entrada son pequeños: existe un algoritmo
+de \emph{programación dinámica} cuyo coste depende del valor de los números, no
+solo de cuántos hay. Cuando los números son pequeños, ese algoritmo es rápido.
+La 3-Partición es especial precisamente porque \textbf{sigue siendo difícil
+aunque los números sean pequeños}. Esto es lo que significa ``fuertemente''
+NP-completo, y es lo que la convierte en una herramienta tan buena para demostrar
+que \emph{otros} problemas son difíciles.
+\end{intuicion}
+
+Esta distinción tiene importancia teórica y práctica:
+\begin{itemize}
+  \item Los problemas NP-completos ``débiles'' (como Mochila o
+        \PART\ clásica) admiten algoritmos de programación dinámica
+        en tiempo \emph{pseudopolinómico}: son tratables cuando
+        los números son pequeños (acotados polinómicamente en el tamaño de la
+        entrada).
+  \item \TPART\ es intratable \emph{incluso cuando los números son pequeños}.
+        La programación dinámica no ofrece ninguna ventaja, salvo que
+        $\mathbf{P}=\mathbf{NP}$.
+\end{itemize}
+
+El problema fue catalogado y demostrado fuertemente NP-completo por
+Garey y Johnson, quienes lo usaron como pieza intermedia para analizar
+problemas de planificación multiprocesador. En su libro de 1979 aparece como
+problema [SP15], y la demostración ocupa los Teoremas 4.3 y 4.4
+(pp.~96--101). El fragmento del libro donde aparece se muestra en la figura~\ref{imagen-libro}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{partition3-libro.png}
+    \caption{Fragmento del libro de Garey y Johnson donde se presenta el problema de la 3-Partición y el comienzo de los teoremas que se mencionan.}
+    \label{imagen-libro}
+\end{figure}
+
+
+
+En este trabajo se presenta la demostración formal siguiendo \emph{exactamente}
+la cadena de reducciones de Garey y Johnson:
+\[
+  \DM \;\leq_p\; \FPART \;\leq_p\; \TPART,
+\]
+donde \DM\ es el Emparejamiento Tridimensional (3-Dimensional Matching).
+
+\begin{remark}
+La cadena pasa por un problema intermedio, \FPART\ (la 4-Partición). Una pregunta
+natural es \emph{por qué hacen falta dos reducciones y no una sola}. La respuesta
+se discute en detalle en la Sección~\ref{sec:dos-reducciones}, pero la idea breve
+es: en principio bastaría una sola reducción desde cualquier problema NP-completo;
+sin embargo, construir directamente $\DM \leq_p \TPART$ es técnicamente muy
+complicado, y el escalón intermedio \FPART\ hace cada paso manejable. Por la
+transitividad de $\leq_p$, dos reducciones encadenadas equivalen a una.
+\end{remark}
+
+% ============================================================
+\section{Preliminares}
+% ============================================================
+
+\subsection{Definiciones de NP-completitud}
+
+\begin{definition}[Clase NP]
+Un problema de decisión $\Pi$ pertenece a la clase \textbf{NP} si existe
+una máquina de Turing no determinista que lo resuelve en tiempo polinómico.
+De forma equivalente, dado un \emph{certificado} (solución candidata), existe un
+algoritmo determinista que lo \emph{verifica} en tiempo polinómico en el tamaño
+de la entrada.
+\end{definition}
+
+\begin{definition}[Reducción polinómica]
+Un problema $\Pi_1$ se \emph{reduce polinómicamente} a $\Pi_2$
+($\Pi_1 \leq_p \Pi_2$) si existe una función $f$ computable en tiempo
+polinómico tal que:
+\[
+  x \in \Pi_1 \iff f(x) \in \Pi_2.
+\]
+\end{definition}
+
+\begin{intuicion}
+Una reducción $\Pi_1 \leq_p \Pi_2$ es una ``traducción'' eficiente: convierte
+cada pregunta de $\Pi_1$ en una pregunta equivalente de $\Pi_2$, de modo que la
+respuesta (sí/no) se conserva. Si supiéramos resolver $\Pi_2$ rápido, resolveríamos
+$\Pi_1$ rápido. Por eso, si $\Pi_1$ ya es ``difícil'', $\Pi_2$ no puede ser más
+fácil. La dirección importa: para probar que $\Pi_2$ es difícil, traducimos un
+problema difícil conocido \emph{hacia} $\Pi_2$, nunca al revés.
+\end{intuicion}
+
+\begin{definition}[NP-completitud]
+$\Pi$ es \textbf{NP-completo} si:
+\begin{enumerate}
+  \item $\Pi \in \mathbf{NP}$, y
+  \item todo problema en NP se reduce polinómicamente a $\Pi$
+        (equivalentemente, algún problema NP-completo conocido se reduce a $\Pi$).
+\end{enumerate}
+\end{definition}
+
+\subsection{NP-completitud fuerte}
+
+\begin{definition}[Número máximo y tamaño de instancia]
+Para un problema con números en la entrada, sea $\mathrm{Max}[I]$ el mayor valor
+numérico que aparece en la instancia $I$, y $\mathrm{Length}[I]$ la longitud de
+la codificación (razonable, en binario) de $I$.
+\end{definition}
+
+\begin{definition}[Fuertemente NP-completo]
+Un problema $\Pi$ es \textbf{fuertemente NP-completo} si sigue siendo NP-completo
+cuando lo restringimos a instancias en las que $\mathrm{Max}[I]$ está acotado por
+un polinomio en $\mathrm{Length}[I]$. Equivalentemente: $\Pi$ permanece NP-completo
+aunque los números se escriban en \emph{unario}.
+\end{definition}
+
+\begin{remark}
+La NP-completitud fuerte implica que, salvo que $\mathbf{P}=\mathbf{NP}$,
+el problema \textbf{no} admite algoritmo pseudopolinómico (uno cuyo tiempo sea
+polinómico en $\mathrm{Length}[I]$ y en $\mathrm{Max}[I]$). Esto lo distingue
+radicalmente de \PART\ clásica o Mochila, que sí lo admiten.
+\end{remark}
+
+\begin{definition}[Transformación pseudopolinómica]
+\label{def:pseudopoli}
+Una \emph{transformación pseudopolinómica} de $\Pi$ a $\Pi'$ es una función
+$f$ que cumple, además de preservar las respuestas
+($I \in Y_\Pi \iff f(I) \in Y_{\Pi'}$):
+\begin{enumerate}[label=(\alph*)]
+  \item $f$ es computable en tiempo polinómico en las dos variables
+        $\mathrm{Max}[I]$ y $\mathrm{Length}[I]$;
+  \item existe un polinomio $q_1$ con $q_1(\mathrm{Length}'[f(I)]) \geq \mathrm{Length}[I]$;
+  \item existe un polinomio $q_2$ con
+        $\mathrm{Max}'[f(I)] \leq q_2(\mathrm{Max}[I], \mathrm{Length}[I])$.
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}[Garey--Johnson, Lema 4.1]
+\label{lem:pseudo}
+Si $\Pi$ es fuertemente NP-completo, $\Pi' \in \mathbf{NP}$, y existe una
+transformación pseudopolinómica de $\Pi$ a $\Pi'$, entonces $\Pi'$ es
+fuertemente NP-completo.
+\end{lemma}
+
+\begin{intuicion}
+El Lema~\ref{lem:pseudo} es la herramienta que nos permite ``propagar'' la
+dureza fuerte a lo largo de la cadena. Una reducción polinómica normal podría
+crear números gigantescos (exponenciales), y eso arruinaría la dureza
+\emph{fuerte}. La condición (c) de la Definición~\ref{def:pseudopoli} es la clave:
+exige que los números que genera la reducción no exploten, sino que queden
+acotados polinómicamente. Si cada paso de la cadena respeta esto, la dureza
+fuerte sobrevive de principio a fin.
+\end{intuicion}
+
+% ============================================================
+\section{Definición Formal del Problema}
+% ============================================================
+
+\begin{tcolorbox}[colback=blue!5, colframe=blue!40, title={\TPART\ (Problema de la 3-Partición) [SP15]}]
+\textbf{Entrada:} Un conjunto $A$ de $3m$ elementos, una cota $B \in \mathbb{Z}^+$,
+y un ``tamaño'' $s(a) \in \mathbb{Z}^+$ para cada $a \in A$, tales que:
+\begin{enumerate}
+  \item $B/4 < s(a) < B/2$ para todo $a \in A$ \quad (condición de acotación), y
+  \item $\displaystyle\sum_{a \in A} s(a) = m \cdot B$ \quad (condición de suma).
+\end{enumerate}
+\textbf{Pregunta:} ¿Puede particionarse $A$ en $m$ conjuntos disjuntos
+$S_1, S_2, \ldots, S_m$ tales que, para cada $i$,
+$\displaystyle\sum_{a \in S_i} s(a) = B$?
+\end{tcolorbox}
+
+\begin{remark}
+La condición de acotación $B/4 < s(a) < B/2$ no es decorativa: \textbf{fuerza}
+que cada $S_i$ tenga exactamente 3 elementos. En efecto, si todos los tamaños
+están estrictamente entre $B/4$ y $B/2$, entonces dos elementos suman menos de
+$B$ (a lo sumo casi $B$) y cuatro elementos suman más de $B$; la única forma de
+alcanzar \emph{exactamente} $B$ es con tres. Por eso ni siquiera hace falta pedir
+$|S_i| = 3$ en el enunciado: se deduce de las cotas.
+\end{remark}
+
+\begin{example}[Instancia pequeña correcta]
+Sea $m = 2$, $B = 24$ y
+$A = \{7, 8, 9, 10, 7, 7\}$, con todos los tamaños estrictamente en
+$(B/4, B/2) = (6, 12)$.
+Una solución es:
+\[
+  S_1 = \{7, 8, 9\}, \qquad S_2 = \{10, 7, 7\}, \qquad
+  \textstyle\sum S_1 = \sum S_2 = 24 = B. \;\checkmark
+\]
+Obsérvese que $\sum_{a\in A} s(a) = 48 = 2 \cdot 24 = m B$, como exige la
+condición de suma.
+\end{example}
+
+% ============================================================
+\section{Problemas Auxiliares}
+% ============================================================
+
+\subsection{Emparejamiento Tridimensional (\DM)}
+
+\begin{tcolorbox}[colback=green!5, colframe=green!40, title={\DM\ (3-Dimensional Matching) [SP1]}]
+\textbf{Entrada:} Tres conjuntos disjuntos $W$, $X$, $Y$ con $|W|=|X|=|Y|=q$,
+y un conjunto de tripletas $M \subseteq W \times X \times Y$.\\
+\textbf{Pregunta:} ¿Existe un subconjunto $M' \subseteq M$ con $|M'| = q$
+tal que cada elemento de $W \cup X \cup Y$ aparece en exactamente una
+tripleta de $M'$? (Un tal $M'$ se llama \emph{emparejamiento perfecto}.)
+\end{tcolorbox}
+
+\begin{intuicion}
+\DM\ es la versión ``en tres dimensiones'' del emparejamiento de un grafo
+bipartito. Imaginamos $q$ trabajadores ($W$), $q$ tareas ($X$) y $q$ franjas
+horarias ($Y$); cada tripleta de $M$ es una combinación viable
+(trabajador, tarea, hora). Preguntamos si se pueden cubrir todos los
+trabajadores, todas las tareas y todas las horas a la vez, sin repetir ninguno.
+\end{intuicion}
+
+\DM\ es uno de los problemas NP-completos originales de Karp (1972), y su
+NP-completitud se demuestra por reducción desde 3-SAT. En el temario de la
+asignatura aparece bajo el nombre \textbf{ACTRI} (acoplamiento de tripletas),
+con la misma definición.
+
+\subsection{Problema de la 4-Partición (\FPART)}
+
+\begin{tcolorbox}[colback=orange!5, colframe=orange!40, title={\FPART\ (4-Partition)}]
+\textbf{Entrada:} Un conjunto $A$ de $4m$ elementos, una cota $B \in \mathbb{Z}^+$,
+y un tamaño $s(a) \in \mathbb{Z}^+$ por elemento, con
+$\sum_{a \in A} s(a) = m B$ y $B/5 < s(a) < B/3$ para todo $a$.\\
+\textbf{Pregunta:} ¿Puede particionarse $A$ en $m$ conjuntos disjuntos, cada uno
+con suma $B$?
+\end{tcolorbox}
+
+La condición $B/5 < s(a) < B/3$ garantiza, por el mismo argumento de antes, que
+cada conjunto de la partición tiene exactamente 4 elementos.
+
+% ============================================================
+\section{Demostración: \TPART\ es NP-completo}
+% ============================================================
+
+La demostración se organiza en tres partes:
+\begin{enumerate}
+  \item $\TPART \in \mathbf{NP}$.
+  \item $\DM \leq_p \FPART$ (Teorema~\ref{thm:dm-to-4part}, basado en el
+        Teorema 4.3 de Garey--Johnson).
+  \item $\FPART \leq_p \TPART$ (Teorema~\ref{thm:4part-to-3part}, basado en el
+        Teorema 4.4 de Garey--Johnson).
+\end{enumerate}
+
+\subsection{Parte I: \TPART\ $\in$ NP}
+
+\begin{proposition}
+\TPART\ pertenece a la clase NP.
+\end{proposition}
+
+\begin{proof}
+Dado un certificado $\mathcal{C} = (S_1, S_2, \ldots, S_m)$
+(una partición propuesta), el verificador comprueba en tiempo polinómico:
+\begin{enumerate}
+  \item Que los $S_i$ son disjuntos y cubren $A$: $O(n)$.
+  \item Que $\sum_{a \in S_i} s(a) = B$ para todo $i$: $O(n)$.
+\end{enumerate}
+(El que cada $|S_i| = 3$ se deduce automáticamente de las cotas, pero también
+puede comprobarse en $O(n)$.) Todo es verificable en tiempo $O(n)$ con
+$n = 3m$. Por tanto, $\TPART \in \mathbf{NP}$.
+\end{proof}
+
+\subsection{Parte II: \DM\ $\leq_p$ \FPART\ (Teorema 4.3 de Garey--Johnson)}
+
+\begin{theorem}[\DM\ se reduce a \FPART]
+\label{thm:dm-to-4part}
+\FPART\ es NP-completo en sentido fuerte; en particular, $\DM \leq_p \FPART$.
+\end{theorem}
+
+\begin{proof}
+Sea $W = \{w_1,\ldots,w_q\}$, $X = \{x_1,\ldots,x_q\}$, $Y = \{y_1,\ldots,y_q\}$
+y $M \subseteq W \times X \times Y$ una instancia arbitraria de \DM. Podemos
+suponer sin pérdida de generalidad que $|M| \geq q$. Construiremos una instancia
+de \FPART\ con $|A| = 4|M|$ elementos: cuatro por cada tripleta de $M$.
+
+\medskip
+\noindent\textbf{Elementos ``reales'' y ``ficticios''.}
+Para cada $z \in W \cup X \cup Y$, sea $N(z)$ el número de tripletas de $M$ en las
+que aparece $z$. Creamos $N(z)$ copias del elemento asociado a $z$: la copia
+$z[1]$ se considera la \emph{real} (\textit{actual}), y las copias
+$z[2], \ldots, z[N(z)]$ se consideran \emph{ficticias} (\textit{dummy}).
+
+\begin{intuicion}
+La idea de tener una copia ``real'' y varias ``ficticias'' por elemento resuelve
+un problema de conteo. En \DM\ cada elemento de $W \cup X \cup Y$ debe usarse
+\emph{exactamente una vez}; pero un mismo elemento puede aparecer en muchas
+tripletas candidatas. Las copias ficticias absorben las apariciones que
+\emph{no} se eligen en el emparejamiento, de modo que la copia real queda libre
+para la tripleta ganadora. Los tamaños se diseñan para que ``real'' y ``ficticio''
+encajen de formas distintas pero compatibles.
+\end{intuicion}
+
+\medskip
+\noindent\textbf{Tamaños.}
+Sea $r = 32q$. Los tamaños dependen de a qué conjunto ($W$, $X$ o $Y$) pertenece
+$z$ y del índice del elemento dentro de su conjunto:
+\[
+\begin{aligned}
+  s(w_i[1]) &= 10r^4 + ir + 1,      & 1 &\leq i \leq q, \\
+  s(w_i[l]) &= 11r^4 + ir + 1,      & 1 &\leq i \leq q,\; 2 \leq l \leq N(w_i), \\[4pt]
+  s(x_j[1]) &= 10r^4 + jr^2 + 2,    & 1 &\leq j \leq q, \\
+  s(x_j[l]) &= 11r^4 + jr^2 + 2,    & 1 &\leq j \leq q,\; 2 \leq l \leq N(x_j), \\[4pt]
+  s(y_k[1]) &= 10r^4 + kr^3 + 4,    & 1 &\leq k \leq q, \\
+  s(y_k[l]) &= 8r^4 + kr^3 + 4,     & 1 &\leq k \leq q,\; 2 \leq l \leq N(y_k).
+\end{aligned}
+\]
+A cada tripleta $m_l = (w_i, x_j, y_k) \in M$ le asociamos un elemento $u_l$ de
+tamaño
+\[
+  s(u_l) = 10r^4 - kr^3 - jr^2 - ir + 8.
+\]
+
+\medskip
+\noindent\textbf{Cota objetivo.}
+Si sumamos $s(u_l)$ con los tamaños de los tres elementos correspondientes a
+$w_i$, $x_j$, $y_k$, el total es $40r^4 + 15$ \emph{tanto si las tres copias son
+reales como si las tres son ficticias} (la elección de los coeficientes lo
+garantiza). Tomamos esa cantidad como cota\footnote{El libro de Garey y Johnson
+imprime aquí $B = 40r^4 + 15\,|A|^3 + 15$; el término $15\,|A|^3$ es una errata:
+cada 4-conjunto suma exactamente $40r^4 + 15$, que es el valor que debe tomar la
+cota para que se cumpla $\sum_{a\in A} s(a) = |M|\,B_4$ (lo confirma el análisis
+módulo $r$ de la propia demostración, que exige $B_4 \equiv 15 \pmod r$).}:
+\[
+  B_4 = 40r^4 + 15.
+\]
+Como $|A| = 4|M|$ y los elementos se reparten en grupos de cuatro, el número de
+grupos objetivo es $m_4 = |A|/4 = |M|$.
+
+\medskip
+\noindent\textbf{Acotación.}
+Se comprueba que cada tamaño está estrictamente entre $B_4/5$ y $B_4/3$, y que
+$\sum s = m_4 \cdot B_4 = |M|\,(40r^4 + 15)$. Además, todos los tamaños están
+acotados por
+$12r^4 \leq 12 \cdot 8^4 \cdot |A|^4 < 2^{16} |A|^4$, es decir, \emph{polinómicamente}
+en el número de elementos. Esta cota polinómica es lo que más adelante permitirá
+invocar el Lema~\ref{lem:pseudo}.
+
+\medskip
+\noindent\textbf{Equivalencia de soluciones.}
+\begin{itemize}
+  \item ($\Rightarrow$) Si $M' \subseteq M$ es un emparejamiento perfecto,
+        construimos una 4-partición así: por cada tripleta
+        $m_l = (w_i,x_j,y_k) \in M'$ formamos el grupo
+        $\{u_l, w_i[1], x_j[1], y_k[1]\}$ (las copias \emph{reales}); por cada
+        tripleta $m_l \notin M'$ formamos $u_l$ junto con copias \emph{ficticias}.
+        Hay suficientes copias ficticias para que esto siempre sea posible, y por
+        la observación anterior cada grupo suma exactamente $B_4$.
+  \item ($\Leftarrow$) Recíprocamente, sea una 4-partición. Analizando los tamaños
+        módulo $r, r^2, r^3, r^4, r^5$ se demuestra que cada 4-conjunto debe
+        contener un elemento de $W$, uno de $X$, uno de $Y$ y un $u_l$, y que los
+        tres elementos de tipo $W,X,Y$ son o bien los tres reales o bien los tres
+        ficticios. La colección de $3q$ elementos reales solo puede caber en $q$ de
+        los 4-conjuntos; las tripletas de $M$ asociadas a esos $q$ conjuntos forman
+        el emparejamiento perfecto buscado.
+\end{itemize}
+
+\begin{intuicion}
+El truco de las potencias de $r$ (con $r = 32q$ ``suficientemente grande'') es una
+forma de \emph{empaquetar} información en un solo número sin que las partes
+interfieran. Cada potencia $r, r^2, r^3$ reserva una ``zona'' para codificar el
+índice $i$, $j$, $k$ respectivamente; como nunca sumamos demasiados números, no
+hay ``acarreo'' de una zona a otra. Es la misma idea que usa el temario de clase
+con bloques de bits, solo que aquí las zonas se separan con potencias de $r$ en
+lugar de potencias de $2$.
+\end{intuicion}
+
+La transformación es polinómica en $|M|$ y $q$, y genera números acotados
+polinómicamente, luego es una transformación pseudopolinómica. Como \DM\ es
+NP-completo (de hecho fuertemente, por ser sus números irrelevantes), el
+Lema~\ref{lem:pseudo} da que \FPART\ es fuertemente NP-completo.
+\end{proof}
+
+\subsection{Parte III: \FPART\ $\leq_p$ \TPART\ (Teorema 4.4 de Garey--Johnson)}
+
+\begin{theorem}[\FPART\ se reduce a \TPART]
+\label{thm:4part-to-3part}
+\TPART\ es NP-completo en sentido fuerte; en particular, $\FPART \leq_p \TPART$.
+\end{theorem}
+
+\begin{proof}
+Para que la transformación sea \emph{pseudopolinómica} no reducimos el \FPART\
+general, sino el subproblema en el que $\max\{s(a): a \in A\} \leq 2^{16} |A|^4$
+(que es exactamente el que produce el Teorema~\ref{thm:dm-to-4part}, y que sigue
+siendo fuertemente NP-completo). Sea entonces
+$A = \{a_1, \ldots, a_{4n}\}$, cota $B$, tamaños $s(a)$ con
+$B/5 < s(a) < B/3$ y $s(a) \leq 2^{16} |A|^4$.
+
+\medskip
+\noindent\textbf{Construcción.}
+La instancia de \TPART\ tendrá $24n^2 - 3n$ elementos, de tres tipos:
+
+\begin{description}
+  \item[Regulares.] Por cada elemento $a_i \in A$, un elemento ``regular'' $w_i$ con
+  \[
+    s'(w_i) = 4\,(5B + s(a_i)) + 1.
+  \]
+  \item[De emparejamiento.] Por cada \emph{par} $a_i, a_j \in A$ (con $i<j$), dos
+  elementos ``de emparejamiento'' $u[i,j]$ y $\bar u[i,j]$ con
+  \[
+    s'(u[i,j]) = 4\,(6B - s(a_i) - s(a_j)) + 2,
+    \qquad
+    s'(\bar u[i,j]) = 4\,(5B + s(a_i) + s(a_j)) + 2.
+  \]
+  \item[De relleno.] Para $1 \leq k \leq 8n^2 - 3n$, un elemento ``de relleno''
+  $u_k^*$ con
+  \[
+    s'(u_k^*) = 20B.
+  \]
+\end{description}
+La cota de la instancia de \TPART\ es
+\[
+  B' = 64B + 4.
+\]
+
+\begin{intuicion}
+La clave de toda esta construcción es el \textbf{resto módulo 4} de cada tamaño:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Tipo & Forma del tamaño & $s' \bmod 4$ \\
+\midrule
+Regular        & $4(\cdots)+1$ & $1$ \\
+Emparejamiento & $4(\cdots)+2$ & $2$ \\
+Relleno        & $20B = 4\cdot 5B$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Como la cota es $B' = 64B+4 \equiv 0 \pmod 4$, cualquier trío que sume $B'$ debe
+tener restos que sumen $0 \pmod 4$. Con restos disponibles $\{1, 2, 0\}$, las
+combinaciones de tres que dan $0 \pmod 4$ son:
+\[
+  0+0+0 \equiv 0, \qquad 1+1+2 = 4 \equiv 0, \qquad 2+2+0 = 4 \equiv 0.
+\]
+La primera, $0+0+0$ (tres rellenos), queda descartada por el \emph{valor} de la
+suma: tres rellenos suman $3 \cdot 20B = 60B \neq 64B + 4 = B'$. Es decir, el
+criterio módulo $4$ es necesario pero no suficiente, y hay que combinarlo con el
+tamaño objetivo. Quedan así solo dos tipos de trío válido: o bien
+\{regular, regular, emparejamiento\}, o bien
+\{emparejamiento, emparejamiento, relleno\}. Esta rigidez es lo que hace que la
+3-partición ``imite'' a la 4-partición original.
+\end{intuicion}
+
+\medskip
+\noindent\textbf{Equivalencia de soluciones.}
+\begin{itemize}
+  \item ($\Rightarrow$) Si $\{a_i, a_j, a_k, a_l\}$ es un 4-conjunto de la
+        4-partición (con suma $B$), lo dividimos en dos pares, digamos
+        $\{a_i, a_j\}$ y $\{a_k, a_l\}$, y formamos los dos tríos
+        \[
+          \{w_i, w_j, u[i,j]\}
+          \quad\text{y}\quad
+          \{w_k, w_l, \bar u[i,j]\}.
+        \]
+        Cada uno suma exactamente $B'$: por ejemplo el primero suma
+        $4(5B+s(a_i)) + 1 + 4(5B+s(a_j)) + 1 + 4(6B - s(a_i) - s(a_j)) + 2
+        = 4(16B) + 4 = 64B + 4 = B'$.
+        Repitiendo para los $n$ 4-conjuntos obtenemos $2n$ tríos que usan todos los
+        regulares y $n$ pares emparejados, dejando $8n^2 - 3n$ pares de
+        emparejamiento y $8n^2 - 3n$ elementos de relleno. Como la suma de un par emparejado
+        $u[i,j] + \bar u[i,j] = 44B + 4 = B' - 20B$, cada par sobrante se agrupa con
+        un relleno para completar la 3-partición.
+  \item ($\Leftarrow$) Si tenemos una 3-partición, el análisis módulo 4 (la caja de
+        intuición) dice que cada trío es de uno de los dos tipos permitidos.
+        Mediante un argumento de intercambio (los elementos de emparejamiento de un
+        mismo par tienen tamaños que ``encajan'' entre sí) se reorganizan los tríos
+        hasta que cada relleno aparece junto a un par emparejado completo
+        $u[i,j], \bar u[i,j]$. Eso obliga a que los tríos de tipo
+        \{regular, regular, emparejamiento\} agrupen los regulares en $n$ pares de
+        tríos cuyos cuatro regulares suman $84B + 4$, lo que equivale a que los
+        cuatro elementos originales de $A$ sumen $B$. Esos $n$ grupos de cuatro
+        forman la 4-partición.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Acotación y carácter pseudopolinómico.}
+Cada tamaño está estrictamente entre $B'/4 = 16B+1$ y $B'/2 = 32B+2$, y
+$\sum s' = (8n^2 - n) B'$. Como en $A$ los tamaños estaban acotados por
+$2^{16}|A|^4$, los tamaños de la instancia de \TPART\ también quedan acotados por
+un polinomio en $|A|$. Por tanto la transformación es pseudopolinómica y, por el
+Lema~\ref{lem:pseudo}, \TPART\ es fuertemente NP-completo.
+\end{proof}
+
+\begin{remark}[Por qué la restricción del subproblema es necesaria]
+Garey y Johnson advierten un punto sutil: si se intentara aplicar esta misma
+construcción al \FPART\ \emph{general} (sin acotar $\max\{s(a)\}$), la
+transformación seguiría siendo correcta como reducción polinómica ordinaria, pero
+\textbf{no} bastaría para la NP-completitud \emph{fuerte}, porque los números
+podrían crecer demasiado. Restringir al subproblema con $\max\{s(a)\}$ acotado
+polinómicamente —que es justo lo que entrega el paso anterior— es lo que mantiene
+la dureza fuerte. Este detalle es la razón técnica de fondo por la que la cadena se
+diseña con cuidado en cada eslabón.
+\end{remark}
+
+\subsection{Resultado Principal}
+
+\begin{theorem}[NP-completitud de \TPART]
+El problema de la 3-Partición es NP-completo (de hecho, fuertemente NP-completo).
+\end{theorem}
+
+\begin{proof}
+Se sigue de lo anterior:
+\begin{enumerate}
+  \item $\TPART \in \mathbf{NP}$ (verificación en tiempo lineal).
+  \item \DM\ es fuertemente NP-completo (Karp, 1972; sus números son irrelevantes).
+  \item $\DM \leq_p \FPART$ por transformación pseudopolinómica
+        (Teorema~\ref{thm:dm-to-4part}).
+  \item $\FPART \leq_p \TPART$ por transformación pseudopolinómica
+        (Teorema~\ref{thm:4part-to-3part}).
+\end{enumerate}
+Por transitividad, \TPART\ es NP-difícil; combinado con $\TPART \in \mathbf{NP}$,
+es NP-completo. Como ambas reducciones son pseudopolinómicas y mantienen los
+números acotados polinómicamente, el Lema~\ref{lem:pseudo} da además que es
+fuertemente NP-completo.
+\end{proof}
+
+% ============================================================
+\section{¿Por qué dos reducciones y no una?}
+\label{sec:dos-reducciones}
+% ============================================================
+
+Una duda razonable al ver la cadena $\DM \leq_p \FPART \leq_p \TPART$ es por qué
+se encadenan \emph{dos} reducciones en lugar de hacer una sola.
+
+Para probar que \TPART\ es NP-difícil bastaría, en principio, \emph{una} reducción
+desde \emph{cualquier} problema NP-completo. Encadenar dos pasos \textbf{no es una
+obligación lógica}, sino una conveniencia técnica: construir directamente
+$\DM \leq_p \TPART$ sería muy difícil de escribir y de verificar, mientras que el
+escalón intermedio \FPART\ descompone esa dificultad en dos saltos manejables.
+Como $\leq_p$ es transitiva, las dos reducciones encadenadas equivalen a una sola
+$\DM \leq_p \TPART$.
+
+\begin{intuicion}
+Por ende, el hecho de hacerlo así es por comodidad, no necesidad: la demostración podría hacerse
+con una única reducción, pero saldría intratable de escribir y de comprobar. El
+bloque intermedio \FPART\ existe precisamente para que cada salto sea manejable.
+\end{intuicion}
+
+% ============================================================
+\section{Comparación: la cadena del libro frente a la del temario}
+\label{sec:comparacion}
+% ============================================================
+
+El temario de la asignatura (Tema 4, Serafín Moral) demuestra un resultado
+\emph{emparentado pero distinto} al de este trabajo. Conviene tenerlo claro porque
+los dos usan tripletas y se parecen superficialmente.
+
+\begin{center}
+\begin{tabular}{p{4.3cm} p{5.0cm} p{4.6cm}}
+\toprule
+ & \textbf{Temario (Serafín Moral)} & \textbf{Este trabajo (Garey--Johnson)} \\
+\midrule
+Problema final & \PART\ clásica (en \textbf{2} grupos) & \TPART\ (en grupos de \textbf{3}) \\
+Cadena & 3-SAT $\to$ ACTRI $\to$ SUMA $\to$ \PART & $\DM \to \FPART \to \TPART$ \\
+Tipo de dureza & NP-completo (\textbf{débil}) & NP-completo (\textbf{fuerte}) \\
+¿Admite alg.\ pseudopolinómico? & Sí & No (salvo $\mathbf{P}=\mathbf{NP}$) \\
+Dificultad técnica & Media & Alta \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{remark}
+Los dos enfoques son \textbf{correctos}; simplemente prueban teoremas diferentes.
+El del temario llega a la Partición en \emph{dos} grupos, que es NP-completo
+\emph{débil} (de hecho tiene algoritmo pseudopolinómico por programación dinámica).
+El de este trabajo llega a la 3-Partición en grupos de \emph{tres}, que es
+fuertemente NP-completo: un resultado más fino y técnicamente más exigente. Por eso
+el temario puede permitirse una codificación binaria por zonas (con potencias de
+$2$) mientras que Garey--Johnson debe cuidar que todos los números queden acotados
+polinómicamente.
+\end{remark}
+
+\paragraph{El parentesco.} Pese a las diferencias, las dos cadenas comparten puntos:
+ambas parten de un problema lógico (3-SAT), pasan por un problema de tripletas
+(ACTRI~$=$~\DM) y terminan en un problema de partición de números. La técnica común
+es la \emph{codificación por zonas}: empaquetar varios índices en un solo número de
+forma que no se ``mezclen'' al sumar (con potencias de $2$ en el temario, con
+potencias de $r=32q$ en Garey--Johnson).
+
+% ============================================================
+\section{Relación con las Técnicas de Reducción del Temario}
+% ============================================================
+
+La demostración emplea, en distinto grado, las técnicas de reducción del Tema 4:
+
+\begin{description}
+  \item[Reemplazamiento Local con Refuerzo.]
+        En $\DM \leq_p \FPART$ cada tripleta de \DM\ se transforma en un elemento
+        $u_l$, y cada elemento de $W\cup X\cup Y$ en copias real/ficticias. Son los
+        ``elementos adicionales'' (las copias ficticias y los $u_l$) los que
+        \emph{refuerzan} la construcción para forzar la equivalencia, exactamente la
+        idea de esta técnica.
+
+  \item[Reemplazamiento Local con Refuerzo (de nuevo).]
+        En $\FPART \leq_p \TPART$ los elementos de relleno $u_k^*$ y los de
+        emparejamiento $u[i,j], \bar u[i,j]$ son refuerzos añadidos para que la
+        3-partición solo pueda imitar a la 4-partición original.
+
+  \item[Diseño de Componentes.]
+        El uso de tipos de elemento con distinto resto módulo 4 (regular,
+        emparejamiento, relleno), que se ``conectan'' obligatoriamente en tríos de
+        dos formas posibles, es un ejemplo de diseño de componentes: distintas
+        piezas con un comportamiento prefijado que encajan de manera controlada.
+\end{description}
+
+% ============================================================
+\section{Ejemplo Numérico (cadena del temario: ACTRI $\to$ SUMA)}
+% ============================================================
+
+\begin{remark}
+El siguiente ejemplo ilustra la \emph{codificación por zonas} sobre la cadena del
+temario ($\text{ACTRI} \to \text{SUMA}$), no sobre la reducción
+$\DM \to \FPART$ de Garey--Johnson (cuyos tamaños, con potencias de $r=32q$, son
+demasiado grandes para tabularse a mano). Se incluye porque muestra de forma
+transparente la \emph{misma idea} de empaquetar índices en zonas que está detrás de
+ambas cadenas.
+\end{remark}
+
+\begin{example}[Codificación por zonas]
+Sea la instancia de ACTRI ($=\DM$) con
+\[
+  W = \{w_1, w_2, w_3\},\quad X = \{x_1, x_2, x_3\},\quad Y = \{y_1, y_2, y_3\},
+\]
+\[
+  M = \{(w_2,x_1,y_3),\, (w_2,x_2,y_2),\, (w_3,x_2,y_1),\,
+        (w_3,x_3,y_2),\, (w_1,x_3,y_2)\}.
+\]
+Hay $q=3$, $k = |M| = 5$, y se toma $p = \lfloor \log_2 k \rfloor + 1 = 3$ bits por
+zona. Cada tripleta se codifica como un número con nueve zonas de 3 bits (una por
+cada elemento de $W \cup X \cup Y$), poniendo un $1$ en las zonas de sus tres
+elementos:
+
+\smallskip
+\begin{center}
+\begin{tabular}{cccccccccc}
+\toprule
+Tripleta & $w_1$ & $w_2$ & $w_3$ & $x_1$ & $x_2$ & $x_3$
+         & $y_1$ & $y_2$ & $y_3$ \\
+\midrule
+$(w_2,x_1,y_3)$ & 000 & 001 & 000 & 001 & 000 & 000 & 000 & 000 & 001 \\
+$(w_2,x_2,y_2)$ & 000 & 001 & 000 & 000 & 001 & 000 & 000 & 001 & 000 \\
+$(w_3,x_2,y_1)$ & 000 & 000 & 001 & 000 & 001 & 000 & 001 & 000 & 000 \\
+$(w_3,x_3,y_2)$ & 000 & 000 & 001 & 000 & 000 & 001 & 000 & 001 & 000 \\
+$(w_1,x_3,y_2)$ & 001 & 000 & 000 & 000 & 000 & 001 & 000 & 001 & 000 \\
+\midrule
+$B$             & 001 & 001 & 001 & 001 & 001 & 001 & 001 & 001 & 001 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\smallskip\noindent
+La solución de ACTRI es $M' = \{(w_2,x_1,y_3),\,(w_3,x_2,y_1),\,(w_1,x_3,y_2)\}$
+(tripletas 1, 3 y 5). Al sumar sus tres números se obtiene exactamente $B$ (un $1$
+en cada zona, sin acarreos, porque $p=3$ bits bastan para que sumar a lo sumo $k=5$
+unos nunca desborde una zona). Esto corresponde, en la cadena del temario, a una
+solución del problema SUMA equivalente.
+\end{example}
+
+% ============================================================
+\section{Aplicaciones y Relevancia}
+% ============================================================
+
+La NP-completitud fuerte de \TPART\ se usa para demostrar la intratabilidad de
+muchos problemas, porque permite reducir desde un problema cuya dureza no depende de
+que los números sean grandes:
+
+\begin{itemize}
+  \item \textbf{Planificación multiprocesador y secuenciación:} numerosos problemas
+        de \emph{scheduling} en máquinas idénticas son NP-completos en sentido fuerte
+        gracias a reducciones desde \TPART. Este fue el contexto original de
+        Garey y Johnson.
+
+  \item \textbf{Empaquetamiento (bin packing, empaquetado de rectángulos):} la
+        NP-dureza de varias variantes se obtiene por reducción desde \TPART.
+
+  \item \textbf{Bandwidth de grafos:} en el propio apéndice de Garey--Johnson, los
+        problemas \textsc{Bandwidth} y \textsc{Directed Bandwidth} [GT40, GT41] se
+        marcan como NP-completos por transformación desde 3-Partition.
+
+  \item \textbf{Juegos y rompecabezas:} trabajos posteriores
+        (p.\,ej. Demaine y coautores sobre Tetris) usan reducciones desde \TPART\ o
+        variantes para probar NP-dureza.
+\end{itemize}
+
+% ============================================================
+\section{Conclusión}
+% ============================================================
+
+Se ha demostrado que el \textbf{Problema de la 3-Partición} es
+\textbf{fuertemente NP-completo}, siguiendo fielmente la construcción de
+Garey y Johnson:
+\[
+  \underbrace{\DM}_{\text{NP-completo}} \;\leq_p\;
+  \underbrace{\FPART}_{\text{fuert.\ NP-completo}} \;\leq_p\;
+  \underbrace{\TPART}_{\text{fuert.\ NP-completo}}.
+\]
+
+Los puntos clave son:
+\begin{enumerate}
+  \item La verificación de una solución es polinómica ($\TPART \in \mathbf{NP}$).
+  \item En $\DM \leq_p \FPART$, las copias real/ficticias y los elementos $u_l$,
+        junto con la codificación por potencias de $r = 32q$, hacen corresponder
+        emparejamientos con 4-particiones manteniendo los números acotados
+        polinómicamente.
+  \item En $\FPART \leq_p \TPART$, los tres tipos de elemento (regular,
+        emparejamiento, relleno) y el análisis módulo 4 fuerzan que toda 3-partición
+        imite a la 4-partición original.
+  \item Ambas reducciones son \emph{pseudopolinómicas}, por lo que el Lema 4.1
+        propaga la dureza fuerte hasta \TPART.
+\end{enumerate}
+
+La 3-Partición es un ejemplo paradigmático: su enunciado es simple, pero su
+intratabilidad es ``robusta'' (no depende de números grandes), y por eso es una de
+las herramientas más empleadas para demostrar NP-dureza fuerte de otros problemas.
+
+% ============================================================
+\begin{thebibliography}{99}
+\small
+
+\bibitem{garey1979}
+M.\,R. Garey y D.\,S. Johnson.
+\textit{Computers and Intractability: A Guide to the Theory of NP-Completeness}.
+W.\,H. Freeman, San Francisco, 1979. Teoremas 4.3 y 4.4 (pp.~96--101);
+problema [SP15].
+
+\bibitem{karp1972}
+R.\,M. Karp.
+``Reducibility among combinatorial problems.''
+En R.\,E. Miller y J.\,W. Thatcher (eds.),
+\textit{Complexity of Computer Computations}, Plenum Press, 1972, pp.~85--103.
+
+\bibitem{moral}
+S. Moral.
+\textit{Tema 4: NP-completitud.} Apuntes de Complejidad Computacional,
+Universidad de Granada, 2024.
+
+\end{thebibliography}
+
+\end{document}
